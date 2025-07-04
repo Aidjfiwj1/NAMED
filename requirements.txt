@@ -1,5 +1,6 @@
 streamlit
-matplotlib
-numpy
-pillow
+opencv-python
+pandas
+ta
 easyocr
+matplotlib
