@@ -1,0 +1,262 @@
+import streamlit as st
+import cv2
+import numpy as np
+import easyocr
+from PIL import Image
+import pandas as pd
+import ta
+import matplotlib.pyplot as plt
+
+st.set_page_config(layout="centered", page_title="📈 محلل تداول ذكي بالصور")
+
+st.title("🤖 تحليل فني ذكي من صورة رسم بياني")
+
+uploaded_file = st.file_uploader("📸 ارفع صورة شارت العملة (PNG أو JPG):", type=["png", "jpg", "jpeg"])
+
+@st.cache_data
+def extract_text_from_image(image):
+    reader = easyocr.Reader(['en'])
+    result = reader.readtext(np.array(image))
+    return [res[1] for res in result]
+
+def fake_extract_ohlc_from_image(image):
+    # بيانات تجريبية مؤقتًا (قابلة للاستبدال بتحليل من OpenCV فعلي لاحقًا)
+    data = {
+        "open": [0.0002795, 0.00027, 0.000261],
+        "high": [0.0002795, 0.000272, 0.000263],
+        "low": [0.0002582, 0.000254, 0.000250],
+        "close": [0.0002597, 0.000256, 0.000252],
+        "volume": [4300000000, 4000000000, 3900000000]
+    }
+    return pd.DataFrame(data)
+
+def analyze(df):
+    df['rsi'] = ta.momentum.RSIIndicator(df['close'], window=3).rsi()
+    df['ema'] = ta.trend.EMAIndicator(df['close'], window=3).ema_indicator()
+    macd = ta.trend.MACD(df['close'])
+    df['macd'] = macd.macd()
+    df['macd_signal'] = macd.macd_signal()
+    return df.dropna()
+
+def get_signal(df):
+    last = df.iloc[-1]
+    if last['rsi'] < 30 and last['macd'] > last['macd_signal']:
+        return "✅ شراء", "تشبع بيعي + تقاطع إيجابي في MACD"
+    elif last['rsi'] > 70 and last['macd'] < last['macd_signal']:
+        return "❌ بيع", "تشبع شرائي + تقاطع سلبي في MACD"
+    else:
+        return "🔁 حياد", "لا توجد إشارة مؤكدة حاليًا"
+
+def trade_levels(df, rr_ratio=2):
+    entry = df['close'].iloc[-1]
+    sl = df['low'].min() * 0.98
+    tp = entry + (entry - sl) * rr_ratio
+    rr = (tp - entry) / (entry - sl)
+    return entry, sl, tp, rr
+
+if uploaded_file:
+    image = Image.open(uploaded_file).convert("RGB")
+    st.image(image, caption="📷 الصورة المرفوعة", use_column_width=True)
+
+    st.subheader("📖 نصوص مستخرجة من الصورة (OCR):")
+    text_lines = extract_text_from_image(image)
+    st.code("\n".join(text_lines))
+
+    st.subheader("📈 بيانات الشموع (تجريبية):")
+    df = fake_extract_ohlc_from_image(image)
+    st.dataframe(df)
+
+    st.subheader("📊 تحليل فني:")
+    df = analyze(df)
+    signal, reason = get_signal(df)
+    entry, sl, tp, rr = trade_levels(df)
+
+    st.success(f"📌 التوصية: {signal}")
+    st.info(f"📌 السبب: {reason}")
+    st.markdown(f"- Entry: `{entry:.8f}`")
+    st.markdown(f"- Stop Loss: `{sl:.8f}`")
+    st.markdown(f"- Take Profit: `{tp:.8f}`")
+    st.markdown(f"- R/R Ratio: `{rr:.2f}`")
+
+    fig, ax = plt.subplots()
+    ax.plot(df['close'], label='السعر')
+    ax.plot(df['ema'], label='EMA')
+    ax.set_title("📉 اتجاه السعر")
+    ax.legend()
+    st.pyplot(fig)
+    import streamlit as st
+import cv2
+import numpy as np
+import easyocr
+from PIL import Image
+import pandas as pd
+import ta
+import matplotlib.pyplot as plt
+
+st.set_page_config(layout="centered", page_title="📈 تحليل تداول ذكي من صورة")
+
+st.title("📷 تحليل فني ذكي من صورة شارت")
+
+uploaded_file = st.file_uploader("ارفع صورة شارت من TradingView أو Binance", type=["png", "jpg", "jpeg"])
+
+@st.cache_data
+def extract_text_from_image(image):
+    reader = easyocr.Reader(['en'])
+    result = reader.readtext(np.array(image))
+    return [res[1] for res in result]
+
+def fake_extract_ohlc(image):
+    # بيانات OHLC تجريبية — سيتم استبدالها لاحقًا بتحليل فعلي عبر OpenCV
+    return pd.DataFrame({
+        "open": [0.000279, 0.000272, 0.000264],
+        "high": [0.000281, 0.000274, 0.000266],
+        "low":  [0.000265, 0.000258, 0.000252],
+        "close":[0.000270, 0.000260, 0.000255],
+        "volume": [3200000000, 2900000000, 3100000000]
+    })
+
+def analyze(df):
+    df['ema'] = ta.trend.EMAIndicator(df['close'], window=3).ema_indicator()
+    df['rsi'] = ta.momentum.RSIIndicator(df['close'], window=3).rsi()
+    macd = ta.trend.MACD(df['close'])
+    df['macd'] = macd.macd()
+    df['macd_signal'] = macd.macd_signal()
+    df['kdj'] = (df['high'] + df['low'] + df['close']) / 3  # مؤشر مخصص مبسط
+    return df.dropna()
+
+def predict_next_candle(df):
+    last = df.iloc[-1]
+    if last['rsi'] < 30 and last['macd'] > last['macd_signal']:
+        return "🔮 الشمعة القادمة: صعود محتمل"
+    elif last['rsi'] > 70 and last['macd'] < last['macd_signal']:
+        return "🔮 الشمعة القادمة: هبوط محتمل"
+    else:
+        return "🔮 الشمعة القادمة: تذبذب / غير واضحة"
+
+def recommendation(df):
+    last = df.iloc[-1]
+    if last['rsi'] < 30 and last['macd'] > last['macd_signal']:
+        return "✅ شراء", "تشبع بيعي + تقاطع إيجابي"
+    elif last['rsi'] > 70 and last['macd'] < last['macd_signal']:
+        return "❌ بيع", "تشبع شرائي + تقاطع سلبي"
+    else:
+        return "🔁 حياد", "لا توجد إشارة مؤكدة حالياً"
+
+def trade_levels(df, rr_ratio=2.0):
+    entry = df['close'].iloc[-1]
+    sl = df['low'].min() * 0.98
+    tp = entry + (entry - sl) * rr_ratio
+    rr = (tp - entry) / (entry - sl)
+    return entry, sl, tp, rr
+
+if uploaded_file:
+    image = Image.open(uploaded_file).convert("RGB")
+    st.image(image, caption="📷 الصورة المرفوعة", use_column_width=True)
+
+    st.subheader("🧠 قراءة النصوص من الصورة:")
+    text_lines = extract_text_from_image(image)
+    st.code("\\n".join(text_lines))
+
+    st.subheader("📥 بيانات الشموع OHLC:")
+    df = fake_extract_ohlc(image)
+    st.dataframe(df)
+
+    st.subheader("📊 التحليل الفني:")
+    df = analyze(df)
+    signal, reason = recommendation(df)
+    entry, sl, tp, rr = trade_levels(df)
+
+    st.success(f"📌 التوصية: {signal}")
+    st.info(f"📌 السبب: {reason}")
+    st.markdown(f"- 🎯 نقطة الدخول: `{entry:.8f}`")
+    st.markdown(f"- ❌ وقف الخسارة: `{sl:.8f}`")
+    st.markdown(f"- ✅ جني الأرباح: `{tp:.8f}`")
+    st.markdown(f"- 📈 نسبة R/R: `{rr:.2f}`")
+
+    st.subheader("📉 التوقع المستقبلي:")
+    st.warning(predict_next_candle(df))
+
+    fig, ax = plt.subplots()
+    ax.plot(df['close'], label='السعر')
+    ax.plot(df['ema'], label='EMA')
+    ax.set_title("📈 الرسم البياني")
+    ax.legend()
+    st.pyplot(fig)
+    import pandas as pd
+import matplotlib.pyplot as plt
+import ta
+
+# 1. بيانات OHLC الحالية (شموع 4 ساعات) ← يمكنك استبدالها ببيانات حقيقية
+data = {
+    "open": [100, 102, 104, 103, 105, 106, 108, 107],
+    "high": [103, 105, 106, 105, 107, 109, 110, 109],
+    "low":  [98, 100, 101, 102, 104, 105, 106, 106],
+    "close":[101, 104, 105, 104, 106, 108, 107, 108],
+    "volume": [1500, 1800, 1700, 1600, 2000, 2100, 2200, 2300]
+}
+df = pd.DataFrame(data)
+
+# 2. حساب المؤشرات الفنية
+df['ema'] = ta.trend.EMAIndicator(df['close'], window=3).ema_indicator()
+df['rsi'] = ta.momentum.RSIIndicator(df['close'], window=3).rsi()
+macd = ta.trend.MACD(df['close'])
+df['macd'] = macd.macd()
+df['macd_signal'] = macd.macd_signal()
+df = df.dropna()
+
+# 3. توقع اتجاه السوق
+def forecast_direction(df):
+    last = df.iloc[-1]
+    if last['rsi'] < 30 and last['macd'] > last['macd_signal'] and last['close'] > last['ema']:
+        return "up"
+    elif last['rsi'] > 70 and last['macd'] < last['macd_signal'] and last['close'] < last['ema']:
+        return "down"
+    else:
+        return "side"
+
+direction = forecast_direction(df)
+
+# 4. توليد 3 شموع مستقبلية على حسب الاتجاه
+def generate_future_candles(df, direction, count=3):
+    last_close = df['close'].iloc[-1]
+    candles = []
+    for i in range(count):
+        if direction == "up":
+            open_price = last_close * (1 + 0.005)
+            close_price = open_price * (1 + 0.005)
+        elif direction == "down":
+            open_price = last_close * (1 - 0.005)
+            close_price = open_price * (1 - 0.005)
+        else:  # side
+            open_price = last_close
+            close_price = last_close
+
+        high = max(open_price, close_price) * 1.002
+        low = min(open_price, close_price) * 0.998
+        volume = df['volume'].mean()
+        candles.append({
+            "open": open_price,
+            "high": high,
+            "low": low,
+            "close": close_price,
+            "volume": volume
+        })
+        last_close = close_price
+    return pd.DataFrame(candles)
+
+future_df = generate_future_candles(df, direction)
+
+# 5. دمج الشموع الحقيقية + المستقبلية
+combined = pd.concat([df[['open', 'high', 'low', 'close']], future_df], ignore_index=True)
+
+# 6. رسم الشموع (شكل خطي مبسط)
+plt.figure(figsize=(10, 5))
+plt.plot(combined['close'], marker='o', label='السعر المتوقع')
+plt.axvline(x=len(df)-1, color='gray', linestyle='--', label='نهاية البيانات الحقيقية')
+plt.title("📈 الرسم البياني مع توقع الشموع القادمة")
+plt.xlabel("الشموع")
+plt.ylabel("السعر")
+plt.grid(True)
+plt.legend()
+plt.tight_layout()
+plt.show()
