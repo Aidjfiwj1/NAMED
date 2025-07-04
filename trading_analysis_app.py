@@ -12,7 +12,7 @@ def t(ar, en):
     return ar if language == "العربية" else en
 
 st.set_page_config(page_title=t("تحليل شارت تداول", "Chart Analysis"), layout="wide")
-st.title(t("📈 تحليل ذكي لشارت تداول من صورة", "📈 Smart Chart Analysis from Image"))
+st.title(t("📈 تحليل تداول ذكي من صورة شارت", "📈 Smart Chart Analysis from Image"))
 
 st.markdown(t(
     """
@@ -23,7 +23,7 @@ st.markdown(t(
 - 📊 تقدير الاتجاه والزخم
 - 📈 توليد شمعات مستقبلية وتوقعات
 - 🎯 إعطائك توصية بيع / شراء مع وقف الخسارة وجني الأرباح
-""",	
+""",
     """
 ### 👇 Upload a chart image from any platform (TradingView, Binance...)
 We will:
