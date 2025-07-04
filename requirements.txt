@@ -1,7 +1,0 @@
-streamlit
-matplotlib
-numpy
-pillow
-easyocr
-requests
-pandas
