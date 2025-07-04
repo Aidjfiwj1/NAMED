@@ -1,0 +1,8 @@
+streamlit
+matplotlib
+numpy
+pandas
+pillow
+easyocr
+requests
+ta
